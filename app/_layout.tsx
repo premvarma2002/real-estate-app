@@ -1,3 +1,4 @@
+
 import {
   FlatList,
   Text,
@@ -7,6 +8,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import "../globals.css"
+import React from "react";
 
 const properties = [
   { id: 1, title: "Luxury Apartment", city: "Mumbai", price: "1.2cr" },
