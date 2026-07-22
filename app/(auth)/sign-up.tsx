@@ -15,6 +15,7 @@ import { Link, useRouter } from "expo-router";
 import { useSignUp } from "@clerk/clerk-expo";
 import { useToast } from "@/lib/toast-context";
 import { getClerkErrorMessage } from "@/lib/errors";
+import { Ionicons } from "@expo/vector-icons";
 
 export default function SignUp() {
   const { signUp, setActive, isLoaded } = useSignUp();
@@ -25,6 +26,7 @@ export default function SignUp() {
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [pendingVerification, setPendingVerification] = useState(false);
   const [code, setCode] = useState("");
   const [loading, setLoading] = useState(false);
@@ -83,7 +85,7 @@ export default function SignUp() {
 
       // Activate the session
       await setActive({ session: completeSignUp.createdSessionId });
-      
+
       showToast("success", "Account Created!", "Welcome to the real estate app.");
 
       // Redirect to the home screen of the application
@@ -92,6 +94,22 @@ export default function SignUp() {
       console.error(JSON.stringify(err, null, 2));
       const errorMessage = getClerkErrorMessage(err);
       showToast("error", "Verification Failed", errorMessage);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const onResendPress = async () => {
+    if (!isLoaded) return;
+    setLoading(true);
+
+    try {
+      await signUp.prepareEmailAddressVerification({ strategy: "email_code" });
+      showToast("info", "New Code Sent", "Please check your email for the new 6-digit code.");
+    } catch (err: any) {
+      console.error(JSON.stringify(err, null, 2));
+      const errorMessage = getClerkErrorMessage(err);
+      showToast("error", "Resend Failed", errorMessage);
     } finally {
       setLoading(false);
     }
@@ -119,7 +137,7 @@ export default function SignUp() {
                 />
                 <Text className="text-3xl font-bold text-gray-900 mb-2">Verify Your Email</Text>
                 <Text className="text-gray-500 text-base text-center">
-                  We've sent a 6-digit verification code to <Text className="font-semibold text-gray-800">{email}</Text>
+                  We&apos;ve sent a 6-digit verification code to <Text className="font-semibold text-gray-800">{email}</Text>
                 </Text>
               </View>
 
@@ -131,8 +149,15 @@ export default function SignUp() {
                   placeholderTextColor="#A0AEC0"
                   value={code}
                   onChangeText={setCode}
-                  className="w-full px-4 py-3 bg-gray-50 rounded-lg border border-gray-200 text-gray-800 text-center text-xl font-bold tracking-widest"
+                  className="w-full px-4 py-3 bg-gray-50 rounded-lg border border-gray-200 text-gray-800 text-center text-xl font-bold tracking-widest mb-2"
                 />
+                <View className="flex-row justify-end">
+                  <TouchableOpacity onPress={onResendPress} disabled={loading}>
+                    <Text className="text-primary font-semibold text-sm" style={{ color: "#0E4D92" }}>
+                      Send New Code
+                    </Text>
+                  </TouchableOpacity>
+                </View>
               </View>
 
               <TouchableOpacity
@@ -212,14 +237,27 @@ export default function SignUp() {
 
                 <View className="mb-4">
                   <Text className="text-gray-700 font-semibold mb-2">Password</Text>
-                  <TextInput
-                    secureTextEntry
-                    placeholder="Create a strong password"
-                    placeholderTextColor="#A0AEC0"
-                    value={password}
-                    onChangeText={setPassword}
-                    className="w-full px-4 py-3 bg-gray-50 rounded-lg border border-gray-200 text-gray-800"
-                  />
+                  <View className="relative">
+                    <TextInput
+                      secureTextEntry={!showPassword}
+                      placeholder="Create a strong password"
+                      placeholderTextColor="#A0AEC0"
+                      value={password}
+                      onChangeText={setPassword}
+                      className="w-full px-4 py-3 bg-gray-50 rounded-lg border border-gray-200 text-gray-800 pr-12"
+                    />
+                    <TouchableOpacity
+                      onPress={() => setShowPassword(!showPassword)}
+                      activeOpacity={0.7}
+                      className="absolute right-4 top-0 bottom-0 justify-center"
+                    >
+                      <Ionicons
+                        name={showPassword ? "eye-off-outline" : "eye-outline"}
+                        size={24}
+                        color="#0E4D92"
+                      />
+                    </TouchableOpacity>
+                  </View>
                 </View>
               </View>
 

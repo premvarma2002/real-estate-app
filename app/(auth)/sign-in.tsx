@@ -15,6 +15,7 @@ import { Link, useRouter } from "expo-router";
 import { useSignIn } from "@clerk/clerk-expo";
 import { useToast } from "@/lib/toast-context";
 import { getClerkErrorMessage } from "@/lib/errors";
+import { Ionicons } from "@expo/vector-icons";
 
 export default function SignIn() {
   const { signIn, setActive, isLoaded } = useSignIn();
@@ -23,6 +24,7 @@ export default function SignIn() {
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const onSignInPress = async () => {
@@ -94,14 +96,36 @@ export default function SignIn() {
 
             <View className="mb-4">
               <Text className="text-gray-700 font-semibold mb-2">Password</Text>
-              <TextInput
-                secureTextEntry
-                placeholder="Enter your password"
-                placeholderTextColor="#A0AEC0"
-                value={password}
-                onChangeText={setPassword}
-                className="w-full px-4 py-3 bg-gray-50 rounded-lg border border-gray-200 text-gray-800"
-              />
+              <View className="relative">
+                <TextInput
+                  secureTextEntry={!showPassword}
+                  placeholder="Enter your password"
+                  placeholderTextColor="#A0AEC0"
+                  value={password}
+                  onChangeText={setPassword}
+                  className="w-full px-4 py-3 bg-gray-50 rounded-lg border border-gray-200 text-gray-800 pr-12"
+                />
+                <TouchableOpacity
+                  onPress={() => setShowPassword(!showPassword)}
+                  activeOpacity={0.7}
+                  className="absolute right-4 top-0 bottom-0 justify-center"
+                >
+                  <Ionicons
+                    name={showPassword ? "eye-off-outline" : "eye-outline"}
+                    size={24}
+                    color="#0E4D92"
+                  />
+                </TouchableOpacity>
+              </View>
+              <View className="flex-row justify-end mt-2">
+                <Link href="/(auth)/forgot-password" asChild>
+                  <TouchableOpacity>
+                    <Text className="text-primary font-semibold text-sm" style={{ color: "#0E4D92" }}>
+                      Forgot Password?
+                    </Text>
+                  </TouchableOpacity>
+                </Link>
+              </View>
             </View>
           </View>
 
@@ -119,7 +143,7 @@ export default function SignIn() {
           </TouchableOpacity>
 
           <View className="flex-row justify-center mt-6">
-            <Text className="text-gray-600">Don't have an account? </Text>
+            <Text className="text-gray-600">Don&apos;t have an account? </Text>
             <Link href="/(auth)/sign-up" asChild>
               <TouchableOpacity>
                 <Text className="text-primary font-bold" style={{ color: "#0E4D92" }}>Sign Up</Text>
