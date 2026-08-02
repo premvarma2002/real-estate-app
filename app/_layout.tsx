@@ -5,11 +5,15 @@ import { ClerkProvider, ClerkLoaded, useAuth } from "@clerk/clerk-expo";
 import { ActivityIndicator, View, Text } from "react-native";
 import { ToastProvider } from "@/lib/toast-context";
 import { tokenCacheSafe } from "@/lib/cache";
+import { useUserSync } from "@/hooks/useUserSync";
 
 const publishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY!;
 
 function InitialLayout() {
   const { isSignedIn, isLoaded } = useAuth();
+  // sync clerk user -> supabase
+  useUserSync();
+
   const segments = useSegments();
   const router = useRouter();
 
