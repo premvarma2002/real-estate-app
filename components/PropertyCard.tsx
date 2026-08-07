@@ -3,6 +3,7 @@ import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
 import { Property } from '@/types';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { useSavedStore } from '@/store/savedStore';
 
 interface PropertyCardProps {
   item: Property;
@@ -17,6 +18,13 @@ function formatPrice(price: number): string {
 
 export default function PropertyCard({ item, variant = 'regular' }: PropertyCardProps) {
   const router = useRouter();
+  const toggleSave = useSavedStore((s) => s.toggleSave);
+  const isSaved = useSavedStore((s) => s.isSaved(item.id));
+
+  const handleSavePress = (e: any) => {
+    e.stopPropagation();
+    toggleSave(item.id);
+  };
 
   if (variant === 'featured') {
     return (
@@ -31,8 +39,17 @@ export default function PropertyCard({ item, variant = 'regular' }: PropertyCard
           resizeMode="cover"
         />
         <View style={styles.featuredOverlay}>
-          <View style={styles.featuredBadge}>
-            <Text style={styles.featuredBadgeText}>Featured</Text>
+          <View style={styles.featuredTopRow}>
+            <View style={styles.featuredBadge}>
+              <Text style={styles.featuredBadgeText}>Featured</Text>
+            </View>
+            <TouchableOpacity onPress={handleSavePress} style={styles.saveBtn} hitSlop={8}>
+              <Ionicons
+                name={isSaved ? 'heart' : 'heart-outline'}
+                size={18}
+                color={isSaved ? '#FF4D6D' : '#fff'}
+              />
+            </TouchableOpacity>
           </View>
           <View style={styles.featuredInfo}>
             <Text style={styles.featuredPrice}>{formatPrice(item.price)}</Text>
@@ -79,7 +96,16 @@ export default function PropertyCard({ item, variant = 'regular' }: PropertyCard
           <View style={styles.typeBadge}>
             <Text style={styles.typeBadgeText}>{item.type}</Text>
           </View>
-          <Text style={styles.regularPrice}>{formatPrice(item.price)}</Text>
+          <View style={styles.regularPriceRow}>
+            <Text style={styles.regularPrice}>{formatPrice(item.price)}</Text>
+            <TouchableOpacity onPress={handleSavePress} hitSlop={8} style={{ marginLeft: 8 }}>
+              <Ionicons
+                name={isSaved ? 'heart' : 'heart-outline'}
+                size={18}
+                color={isSaved ? '#FF4D6D' : '#bbb'}
+              />
+            </TouchableOpacity>
+          </View>
         </View>
         <Text style={styles.regularTitle} numberOfLines={1}>{item.title}</Text>
         <View style={styles.regularLocation}>
@@ -128,6 +154,11 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     padding: 12,
   },
+  featuredTopRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
   featuredBadge: {
     alignSelf: 'flex-start',
     backgroundColor: '#7C3AED',
@@ -139,6 +170,14 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 11,
     fontWeight: '600',
+  },
+  saveBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(0,0,0,0.3)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   featuredInfo: {
     gap: 3,
@@ -192,6 +231,10 @@ const styles = StyleSheet.create({
   regularTop: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  regularPriceRow: {
+    flexDirection: 'row',
     alignItems: 'center',
   },
   typeBadge: {

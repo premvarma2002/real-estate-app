@@ -45,6 +45,7 @@ function InitialLayout() {
       <Stack.Screen name="index" />
       <Stack.Screen name="(auth)" options={{ headerShown: false }} />
       <Stack.Screen name="(root)" options={{ headerShown: false }} />
+      <Stack.Screen name="(root)/property/[id]" options={{ headerShown: false, presentation: 'card' }} />
     </Stack>
   );
 }

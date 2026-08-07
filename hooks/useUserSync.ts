@@ -1,11 +1,14 @@
-import { useUser } from "@clerk/clerk-expo";
+import { useUser, useAuth } from "@clerk/clerk-expo";
 import { useEffect } from "react";
 import { useUserStore } from "@/store/userStore";
 import { useSupabase } from "./useSupabase";
+import { useToast } from "@/lib/toast-context";
 
 export const useUserSync = ()=>{
     const {user}=useUser();
+    const { signOut } = useAuth();
     const setIsAdmin = useUserStore((state) => state.setIsAdmin);
+    const { showToast } = useToast();
 
    const authSupabase = useSupabase()
 
@@ -21,10 +24,24 @@ export const useUserSync = ()=>{
     .eq("clerk_id", user!.id)
     .single();
 
-    if (error && error.code !== "PGRST116") {
-      // PGRST116 = row not found, which is expected for new users
-      console.error("useUserSync: select error", error);
-      return;
+    if (error) {
+      if (error.code === "PGRST303") {
+        // JWT not yet valid — stale / clock-skew session, force sign-out
+        console.warn("useUserSync: JWT not yet valid, signing out...");
+        showToast(
+          "error",
+          "Session Expired",
+          "Your session is no longer valid. Please sign in again."
+        );
+        await signOut();
+        return;
+      }
+
+      if (error.code !== "PGRST116") {
+        // PGRST116 = row not found, which is expected for new users
+        console.error("useUserSync: select error", error);
+        return;
+      }
     }
 
      if (data) {
