@@ -11,7 +11,7 @@ import {
   Image,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Link, useRouter } from "expo-router";
+import { Link } from "expo-router";
 import { useSignIn } from "@clerk/clerk-expo";
 import { useToast } from "@/lib/toast-context";
 import { getClerkErrorMessage } from "@/lib/errors";
@@ -19,14 +19,18 @@ import { Ionicons } from "@expo/vector-icons";
 
 export default function SignIn() {
   const { signIn, setActive, isLoaded } = useSignIn();
-  const router = useRouter();
   const { showToast } = useToast();
+
+  // Step: "credentials" → enter email+password | "otp" → enter 2FA code
+  const [step, setStep] = useState<"credentials" | "otp">("credentials");
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [otp, setOtp] = useState("");
   const [loading, setLoading] = useState(false);
 
+  // ─── Step 1: email + password ────────────────────────────────────────────
   const onSignInPress = async () => {
     if (!isLoaded) return;
     if (!email || !password) {
@@ -35,37 +39,162 @@ export default function SignIn() {
     }
 
     setLoading(true);
-
     try {
-      const completeSignIn = await signIn.create({
+      const result = await signIn.create({
         identifier: email,
         password: password,
       });
 
-      // This will activate the session and log the user in
-      await setActive({ session: completeSignIn.createdSessionId });
-      
-      showToast("success", "Welcome Back!", "Signed in successfully.");
-
-      // Redirect to the main application
-      router.replace("/(root)/(tabs)");
+      if (result.status === "complete") {
+        // No 2FA — session ready immediately
+        await setActive({ session: result.createdSessionId });
+        showToast("success", "Welcome Back!", "Signed in successfully.");
+        // _layout.tsx handles redirect via isSignedIn
+      } else if (result.status === "needs_second_factor") {
+        // 2FA required — prepare the email_code second factor (sends OTP email)
+        await signIn.prepareSecondFactor({ strategy: "email_code" });
+        showToast("success", "Code Sent", "Check your email for the verification code.");
+        setStep("otp");
+      } else {
+        showToast("error", "Sign In Error", `Unexpected status: ${result.status}`);
+      }
     } catch (err: any) {
       console.error(JSON.stringify(err, null, 2));
-      const errorMessage = getClerkErrorMessage(err);
-      showToast("error", "Sign In Failed", errorMessage);
+      showToast("error", "Sign In Failed", getClerkErrorMessage(err));
     } finally {
       setLoading(false);
     }
   };
 
+  // ─── Step 2: verify OTP ───────────────────────────────────────────────────
+  const onVerifyOtp = async () => {
+    if (!isLoaded) return;
+    if (!otp) {
+      showToast("error", "Verification Error", "Please enter the code sent to your email.");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const result = await signIn.attemptSecondFactor({
+        strategy: "email_code",
+        code: otp,
+      });
+
+      if (result.status === "complete") {
+        await setActive({ session: result.createdSessionId });
+        showToast("success", "Welcome Back!", "Signed in successfully.");
+        // _layout.tsx handles redirect via isSignedIn
+      } else {
+        showToast("error", "Verification Error", `Unexpected status: ${result.status}`);
+      }
+    } catch (err: any) {
+      console.error(JSON.stringify(err, null, 2));
+      showToast("error", "Invalid Code", getClerkErrorMessage(err));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const onResendOtp = async () => {
+    if (!isLoaded || loading) return;
+    setLoading(true);
+    try {
+      await signIn.prepareSecondFactor({ strategy: "email_code" });
+      showToast("success", "Code Resent", "A new code has been sent to your email.");
+    } catch (err: any) {
+      showToast("error", "Resend Failed", getClerkErrorMessage(err));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ─── OTP Screen ───────────────────────────────────────────────────────────
+  if (step === "otp") {
+    return (
+      <SafeAreaView className="flex-1 bg-white">
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          className="flex-1"
+        >
+          <ScrollView
+            contentContainerStyle={{ flexGrow: 1, justifyContent: "center" }}
+            className="px-6 py-8"
+          >
+            <View className="mb-8 items-center">
+              <Image
+                source={require("../../assets/images/kribb.png")}
+                style={{ width: 140, height: 70 }}
+                resizeMode="contain"
+                className="mb-4"
+              />
+              <Text className="text-3xl font-bold text-gray-900 mb-2">
+                Verify Your Identity
+              </Text>
+              <Text className="text-gray-500 text-base text-center">
+                Enter the 6-digit code sent to{" "}
+                <Text className="font-semibold text-gray-700">{email}</Text>
+              </Text>
+            </View>
+
+            <View className="mb-6">
+              <Text className="text-gray-700 font-semibold mb-2">
+                Verification Code
+              </Text>
+              <TextInput
+                keyboardType="number-pad"
+                placeholder="Enter 6-digit code"
+                placeholderTextColor="#A0AEC0"
+                value={otp}
+                onChangeText={setOtp}
+                maxLength={6}
+                className="w-full px-4 py-3 bg-gray-50 rounded-lg border border-gray-200 text-gray-800 text-center text-xl tracking-widest"
+              />
+            </View>
+
+            <TouchableOpacity
+              onPress={onVerifyOtp}
+              disabled={loading}
+              className="w-full py-4 rounded-xl flex-row justify-center items-center"
+              style={{ backgroundColor: "#0E4D92" }}
+            >
+              {loading ? (
+                <ActivityIndicator color="white" />
+              ) : (
+                <Text className="text-white font-bold text-lg">Verify</Text>
+              )}
+            </TouchableOpacity>
+
+            <View className="flex-row justify-center mt-4">
+              <Text className="text-gray-500">Didn't receive a code? </Text>
+              <TouchableOpacity onPress={onResendOtp} disabled={loading}>
+                <Text className="font-bold" style={{ color: "#0E4D92" }}>
+                  Resend
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            <TouchableOpacity
+              onPress={() => { setStep("credentials"); setOtp(""); }}
+              className="mt-4 items-center"
+            >
+              <Text className="text-gray-400 text-sm">← Back to sign in</Text>
+            </TouchableOpacity>
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </SafeAreaView>
+    );
+  }
+
+  // ─── Credentials Screen ───────────────────────────────────────────────────
   return (
     <SafeAreaView className="flex-1 bg-white">
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         className="flex-1"
       >
-        <ScrollView 
-          contentContainerStyle={{ flexGrow: 1, justifyContent: "center" }} 
+        <ScrollView
+          contentContainerStyle={{ flexGrow: 1, justifyContent: "center" }}
           className="px-6 py-8"
         >
           <View className="mb-8 items-center">
